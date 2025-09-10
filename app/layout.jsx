@@ -1,15 +1,13 @@
-// app/layout.jsx
-import './globals.css';
+'use client';
+
 import { ClerkProvider } from '@clerk/nextjs';
 
-export const metadata = {
-  title: 'REPPIFY HIGHQUALITY REPS',
-  description: 'Dein Shop',
-};
-
 export default function RootLayout({ children }) {
+  // Holt den Publishable Key NUR aus NEXT_PUBLIC_...
+  const pk = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={pk}>
       <html lang="de">
         <body>{children}</body>
       </html>

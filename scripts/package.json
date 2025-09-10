@@ -1,0 +1,16 @@
+{
+  "name": "reppify-shop-simple",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p 3000"
+  },
+  "dependencies": {
+    "next": "15.5.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@clerk/nextjs": "^6.31.10",
+    "stripe": "^14.25.0"
+  }
+}
