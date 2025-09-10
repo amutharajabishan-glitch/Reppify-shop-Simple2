@@ -1,24 +1,52 @@
-'use client';
+// app/success/page.jsx
+export const dynamic = "force-dynamic";     // verhindert Prerender/SSG
+export const revalidate = 0;                // kein Cache
 
-import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import Link from "next/link";
 
-export default function SuccessPage() {
-  const params = useSearchParams();
-  const sessionId = params.get('session_id');
+export default async function Success({ searchParams }) {
+  // KEIN useSearchParams -> Server Component liest Request-Query direkt
+  const sessionId = searchParams?.session_id;
+
+  if (!sessionId) {
+    return (
+      <main className="mx-auto max-w-xl p-6 text-center">
+        <h1 className="text-3xl font-bold">Danke für deinen Einkauf! 🎉</h1>
+        <p className="mt-2">Kein session_id Parameter gefunden.</p>
+        <Link href="/" className="underline mt-4 inline-block">Zur Startseite</Link>
+      </main>
+    );
+  }
+
+  // verwende deine öffentliche Basis-URL (so wie in Vercel gesetzt)
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    "";
+
+  const res = await fetch(
+    `${baseUrl}/api/checkout/success?session_id=${sessionId}`,
+    { cache: "no-store" }
+  );
+
+  let session = null;
+  if (res.ok) {
+    const data = await res.json();
+    session = data?.session || null;
+  }
 
   return (
-    <main style={{minHeight:'60vh', padding: '40px', color:'#e8eefc', background:'#0b0f1a'}}>
-      <h1>Danke für deine Bestellung 🎉</h1>
-      <p>Wir haben deine Zahlung erhalten. Du bekommst gleich eine Bestellbestätigung per E-Mail.</p>
-
-      {sessionId && (
-        <p style={{opacity:.8, marginTop:10}}>Stripe Session ID: <code>{sessionId}</code></p>
+    <main className="mx-auto max-w-xl p-6 text-center">
+      <h1 className="text-3xl font-bold">Danke für deinen Einkauf! 🎉</h1>
+      {session ? (
+        <>
+          <p className="mt-2">Bestellnummer: {session.id}</p>
+          <p className="mt-1">Status: {session.payment_status}</p>
+        </>
+      ) : (
+        <p className="mt-2">Zahlungsdetails konnten nicht geladen werden.</p>
       )}
-
-      <div style={{marginTop:24}}>
-        <Link href="/" style={{color:'#8fe8ff', textDecoration:'underline'}}>Zurück zum Shop</Link>
-      </div>
+      <Link href="/" className="underline mt-4 inline-block">Weiter shoppen</Link>
     </main>
   );
 }
