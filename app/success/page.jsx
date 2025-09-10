@@ -1,6 +1,6 @@
 // app/success/page.jsx
-export const dynamic = "force-dynamic";  // verhindert SSG/Prerender
-export const revalidate = 0;             // kein Cache
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import Link from "next/link";
 
@@ -11,7 +11,7 @@ export default async function Success({ searchParams }) {
     return (
       <main className="mx-auto max-w-xl p-6 text-center">
         <h1 className="text-3xl font-bold">Danke für deinen Einkauf! 🎉</h1>
-        <p className="mt-2">Kein <code>session_id</code> Parameter gefunden.</p>
+        <p className="mt-2">Kein session_id Parameter gefunden.</p>
         <Link href="/" className="underline mt-4 inline-block">Zur Startseite</Link>
       </main>
     );
