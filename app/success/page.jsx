@@ -1,28 +1,25 @@
 // app/success/page.jsx
-export const dynamic = "force-dynamic";     // verhindert Prerender/SSG
-export const revalidate = 0;                // kein Cache
+export const dynamic = "force-dynamic";  // verhindert SSG/Prerender
+export const revalidate = 0;             // kein Cache
 
 import Link from "next/link";
 
 export default async function Success({ searchParams }) {
-  // KEIN useSearchParams -> Server Component liest Request-Query direkt
   const sessionId = searchParams?.session_id;
 
   if (!sessionId) {
     return (
       <main className="mx-auto max-w-xl p-6 text-center">
         <h1 className="text-3xl font-bold">Danke für deinen Einkauf! 🎉</h1>
-        <p className="mt-2">Kein session_id Parameter gefunden.</p>
+        <p className="mt-2">Kein <code>session_id</code> Parameter gefunden.</p>
         <Link href="/" className="underline mt-4 inline-block">Zur Startseite</Link>
       </main>
     );
   }
 
-  // verwende deine öffentliche Basis-URL (so wie in Vercel gesetzt)
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    "";
+    process.env.NEXT_PUBLIC_BASE_URL || "";
 
   const res = await fetch(
     `${baseUrl}/api/checkout/success?session_id=${sessionId}`,
