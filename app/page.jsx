@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 
 /* ==============================
    Einstellungen
@@ -82,6 +81,30 @@ function priceOf(p) {
   return typeof p.price === 'number' && p.price > 0 ? p.price : fall;
 }
 
+/* ===== Clerk-Fallbacks: Buttons funktionieren auch wenn Clerk noch nicht geladen ist ===== */
+function getClerk() {
+  if (typeof window === 'undefined') return null;
+  const c = window.Clerk ?? null;
+  return c && c.loaded ? c : null;
+}
+function safeOpenClerk(kind = 'signIn') {
+  const c = getClerk();
+  if (!c) {
+    alert('Login/Registrieren ist noch nicht aktiviert (Clerk lädt noch oder DNS/SSL ist nicht fertig).');
+    return;
+  }
+  if (kind === 'signUp' && c.openSignUp) c.openSignUp();
+  else if (c.openSignIn) c.openSignIn();
+}
+function isSignedInNow() {
+  try {
+    const c = getClerk();
+    return !!(c?.user || c?.session);
+  } catch {
+    return false;
+  }
+}
+
 /* ==============================
    Seite
    ============================== */
@@ -102,6 +125,16 @@ export default function Home() {
 
   // Größe pro Produkt (Index) gemerkt
   const [selectedSize, setSelectedSize] = useState({}); // {idx: 'M'}
+
+  // Clerk Sign-In Status (leichtes Polling)
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    const upd = () => setSignedIn(isSignedInNow());
+    upd();
+    const t = setInterval(upd, 800);
+    window.addEventListener('focus', upd);
+    return () => { clearInterval(t); window.removeEventListener('focus', upd); };
+  }, []);
 
   /* Produkte laden */
   useEffect(() => {
@@ -290,31 +323,55 @@ export default function Home() {
               Warenkorb {cart.length ? `(${cart.reduce((n, x) => n + x.qty, 0)})` : ''}
             </button>
 
-            {/* Clerk: signed out → zeigen SignIn/SignUp Buttons (Modal) */}
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="neon">Login</button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="neon">Registrieren</button>
-              </SignUpButton>
-            </SignedOut>
+            {/* Login/Registrieren IMMER zeigen – weichen automatisch auf Clerk-Modal aus, sobald geladen */}
+            <button
+              className="neon"
+              onClick={() => safeOpenClerk('signIn')}
+              title="Login"
+              style={{ opacity: signedIn ? .5 : 1 }}
+            >
+              Login
+            </button>
+            <button
+              className="neon"
+              onClick={() => safeOpenClerk('signUp')}
+              title="Registrieren"
+              style={{ opacity: signedIn ? .5 : 1 }}
+            >
+              Registrieren
+            </button>
 
-            {/* Clerk: signed in → UserButton + Profil */}
-            <SignedIn>
-              <UserButton />
-              <button
-                className="neon"
-                onClick={() => {
-                  const c = window.Clerk;
-                  if (c?.user) {
-                    alert(`Eingeloggt als: ${c.user?.primaryEmailAddress?.emailAddress || c.user?.username || 'User'}`);
-                  }
-                }}
-              >
-                Profil
-              </button>
-            </SignedIn>
+            {/* Wenn eingeloggt: Profil + Logout zusätzlich */}
+            {signedIn && (
+              <>
+                <button
+                  className="neon"
+                  onClick={() => {
+                    const c = getClerk();
+                    if (c?.user) {
+                      alert(`Eingeloggt als: ${c.user?.primaryEmailAddress?.emailAddress || c.user?.username || 'User'}`);
+                    }
+                  }}
+                >
+                  Profil
+                </button>
+                <button
+                  className="neon"
+                  onClick={async () => {
+                    try {
+                      const c = getClerk();
+                      if (c?.signOut) {
+                        await c.signOut({ redirectUrl: '/' });
+                        return;
+                      }
+                    } catch {}
+                    window.location.href = '/';
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
