@@ -3,6 +3,19 @@ import Stripe from "stripe";
 export const dynamic = "force-dynamic";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
+
+// ▲ Früh prüfen: Key vorhanden und SECRET?
+if (!stripeSecret) {
+  throw new Error(
+    "Stripe: STRIPE_SECRET_KEY ist nicht gesetzt. Bitte in Vercel → Project Settings → Environment Variables hinterlegen und redeployen."
+  );
+}
+if (stripeSecret.startsWith("pk_")) {
+  throw new Error(
+    "Stripe: STRIPE_SECRET_KEY enthält einen Publishable Key (pk_*). Bitte den SECRET Key (sk_*) eintragen."
+  );
+}
+
 const stripe = new Stripe(stripeSecret, { apiVersion: "2024-06-20" });
 
 export async function POST(req) {
@@ -21,6 +34,7 @@ export async function POST(req) {
     if (!cart.length) {
       return new Response(JSON.stringify({ error: "Cart is empty" }), {
         status: 400,
+        headers: { "content-type": "application/json" },
       });
     }
 
@@ -29,7 +43,7 @@ export async function POST(req) {
       const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
       const unitAmount = Math.round(Number(item?.price) * 100);
 
-      // Bild-URL: absolut machen, nur wenn gültig (Stripe erwartet https/http)
+      // Bild-URL absolut machen (Stripe braucht http/https)
       let imageUrl;
       if (item?.image) {
         const tentative = item.image.startsWith("http")
@@ -101,7 +115,8 @@ export async function POST(req) {
     // Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      payment_method_types: ["card"], // (später: TWINT/PayPal ergänzen)
+      // (robuster als feste Liste, Stripe wählt geeignete Methoden)
+      automatic_payment_methods: { enabled: true },
       customer_email: email,
       billing_address_collection: "required",
       shipping_address_collection: {
@@ -119,14 +134,12 @@ export async function POST(req) {
       headers: { "content-type": "application/json" },
     });
   } catch (err) {
-    // Fehlermeldung schön sichtbar im Terminal + klare API-Antwort
     console.error("Stripe checkout error:", err);
     const msg = err?.raw?.message || err?.message || "Server error";
 
     return new Response(
       JSON.stringify({
         error: msg,
-        // Nur in DEV extra Debug-Daten zurückgeben
         debug: process.env.NODE_ENV !== "production" ? err : undefined,
       }),
       { status: 500, headers: { "content-type": "application/json" } }
