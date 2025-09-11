@@ -4,51 +4,65 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { sendOrderEmails } from "@/lib/resend";
 
-export const runtime = "nodejs";       // wichtig: Node runtime (kein Edge)
-export const dynamic = "force-dynamic"; // nicht cachen
+export const runtime = "nodejs";          // nicht edge!
+export const dynamic = "force-dynamic";   // kein Cache
+export const preferredRegion = "fra1";    // optional
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2024-11-20.acacia",
 });
 
 export async function POST(req) {
-  // 1) Stripe-Signatur & Rohkörper einlesen
   const sig = headers().get("stripe-signature");
-  const rawBody = await req.text();
+  const buf = Buffer.from(await req.arrayBuffer());
 
   let event;
   try {
     event = stripe.webhooks.constructEvent(
-      rawBody,
+      buf,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("❌ Webhook verify failed:", err?.message);
-    return new NextResponse("Bad signature", { status: 400 });
+    return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
-  // 2) Auf das Event reagieren
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
 
-      // Line Items dazuladen (für Produkte, Summen, Mengen)
-      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
-        limit: 100,
-      });
+      // Artikel abrufen
+      let itemsText = "";
+      try {
+        const li = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
+        itemsText = li.data
+          .map(
+            (i) =>
+              `${i.quantity} x ${i.description} – ${(i.amount_total / 100).toFixed(2)} ${i.currency.toUpperCase()}`
+          )
+          .join("\n");
+      } catch {
+        // optional ignorieren
+      }
 
-      // 3) E-Mails senden (Kunde + Shop)
       await sendOrderEmails({
-        session,
-        items: lineItems.data || [],
+        customerEmail: session.customer_details?.email,
+        amount: session.amount_total,
+        currency: session.currency,
+        shipping: {
+          name: session.customer_details?.name,
+          address: session.customer_details?.address,
+        },
+        itemsText,
+        sessionId: session.id,
       });
     }
-  } catch (err) {
-    // Wichtig: Stripe retryt bei Fehlern — wir loggen, antworten aber 200,
-    // sonst kommt das gleiche Event zigmal. Details in Vercel Logs prüfen.
-    console.error("⚠️ Webhook handler error:", err);
-  }
 
-  return NextResponse.json({ received: true }, { status: 200 });
+    // weitere Events falls nötig …
+    return NextResponse.json({ received: true });
+  } catch (e) {
+    // swallow, damit Stripe nicht endlos retried, aber loggen:
+    console.error("Webhook handler error:", e);
+    return new NextResponse("ok", { status: 200 });
+  }
 }
