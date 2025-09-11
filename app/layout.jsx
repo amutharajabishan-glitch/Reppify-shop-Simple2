@@ -1,13 +1,9 @@
-'use client';
-
-import { ClerkProvider } from '@clerk/nextjs';
+"use client";
+import { ClerkProvider } from "@clerk/nextjs";
 
 export default function RootLayout({ children }) {
-  // Holt den Publishable Key NUR aus NEXT_PUBLIC_...
-  const pk = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
   return (
-    <ClerkProvider publishableKey={pk}>
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <html lang="de">
         <body>{children}</body>
       </html>
