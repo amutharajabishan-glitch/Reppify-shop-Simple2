@@ -68,7 +68,7 @@ export async function POST(req) {
     }, 0);
 
     const shipping_options =
-      subtotalCents >= 10000
+      subtotalCents >= 20000
         ? [
             {
               shipping_rate_data: {
@@ -76,8 +76,8 @@ export async function POST(req) {
                 type: "fixed_amount",
                 fixed_amount: { currency: "chf", amount: 0 },
                 delivery_estimate: {
-                  minimum: { unit: "business_day", value: 2 },
-                  maximum: { unit: "business_day", value: 5 },
+                  minimum: { unit: "business_day", value: 10 },
+                  maximum: { unit: "business_day", value: 12 },
                 },
               },
             },
@@ -98,7 +98,7 @@ export async function POST(req) {
               shipping_rate_data: {
                 display_name: "Priority (A-Post)",
                 type: "fixed_amount",
-                fixed_amount: { currency: "chf", amount: 1200 },
+                fixed_amount: { currency: "chf", amount: 2000 },
                 delivery_estimate: {
                   minimum: { unit: "business_day", value: 1 },
                   maximum: { unit: "business_day", value: 2 },
