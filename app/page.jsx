@@ -185,7 +185,8 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/price-overrides.json', { cache: 'no-store' });
+        const res = await fetch('/price-overrides.v2.json?v=' + Date.now(), { cache: 'no-store' });
+
         if (res.ok) {
           const json = await res.json();
           setPriceMap(json || {});
