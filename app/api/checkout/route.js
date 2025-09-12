@@ -4,7 +4,6 @@ export const dynamic = "force-dynamic";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 
-// ▲ Früh prüfen: Key vorhanden und SECRET?
 if (!stripeSecret) {
   throw new Error(
     "Stripe: STRIPE_SECRET_KEY ist nicht gesetzt. Bitte in Vercel → Project Settings → Environment Variables hinterlegen und redeployen."
@@ -20,7 +19,6 @@ const stripe = new Stripe(stripeSecret, { apiVersion: "2024-06-20" });
 
 export async function POST(req) {
   try {
-    // Basis-URL ermitteln (Prod: deine Domain über ENV, sonst Origin/localhost)
     const origin = new URL(
       process.env.NEXT_PUBLIC_SITE_URL ||
         req.headers.get("origin") ||
@@ -38,12 +36,10 @@ export async function POST(req) {
       });
     }
 
-    // Line Items sauber aufbereiten
     const line_items = cart.map((item) => {
       const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
       const unitAmount = Math.round(Number(item?.price) * 100);
 
-      // Bild-URL absolut machen (Stripe braucht http/https)
       let imageUrl;
       if (item?.image) {
         const tentative = item.image.startsWith("http")
@@ -65,7 +61,6 @@ export async function POST(req) {
       };
     });
 
-    // Versandoptionen
     const subtotalCents = cart.reduce((sum, it) => {
       const qty = Number(it?.qty) > 0 ? Number(it.qty) : 1;
       const priceCents = Math.round(Number(it?.price) * 100);
@@ -112,11 +107,11 @@ export async function POST(req) {
             },
           ];
 
-    // Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      // (robuster als feste Liste, Stripe wählt geeignete Methoden)
-      automatic_payment_methods: { enabled: true },
+      // optional: wenn du explizit festlegen willst:
+      // payment_method_types: ["card"],
+
       customer_email: email,
       billing_address_collection: "required",
       shipping_address_collection: {
