@@ -1,59 +1,68 @@
-import Stripe from "stripe";
-import { Resend } from "resend";
+// /app/api/stripe/webhook/route.js
+import Stripe from 'stripe';
+import { NextResponse } from 'next/server';
+import { sendOrderEmails } from '@/lib/email';
 
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
-const resend = new Resend(process.env.RESEND_API_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
 
 export async function POST(req) {
+  // Stripe braucht den RAW Body für die Signaturprüfung
   const rawBody = await req.text();
-  const sig = req.headers.get("stripe-signature");
+  const sig = req.headers.get('stripe-signature');
 
   let event;
   try {
     event = stripe.webhooks.constructEvent(
-      rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET
+      rawBody,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("Invalid signature:", err?.message);
-    return new Response("Invalid signature", { status: 400 });
+    console.error('⚠️  Invalid signature:', err?.message);
+    return new Response('Invalid signature', { status: 400 });
   }
 
   try {
-    if (event.type === "checkout.session.completed") {
+    if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-      const items = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
 
-      const email = session.customer_details?.email || "(keine E-Mail)";
-      const name  = session.customer_details?.name  || "(kein Name)";
-      const addr  = session.customer_details?.address;
+      // Line Items holen → damit Artikel/Mengen in die Mail kommen
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
 
-      const html = `
-        <h2>Neue Bestellung</h2>
-        <p><b>Kunde:</b> ${name} &lt;${email}&gt;</p>
-        <p><b>Betrag:</b> ${(session.amount_total/100).toFixed(2)} ${session.currency.toUpperCase()}</p>
-        <p><b>Adresse:</b><br>
-          ${addr?.line1 ?? ""} ${addr?.line2 ?? ""}<br>
-          ${addr?.postal_code ?? ""} ${addr?.city ?? ""}, ${addr?.country ?? ""}
-        </p>
-        <h3>Artikel</h3>
-        <ul>
-          ${items.data.map(it => `<li>${it.quantity} × ${it.description} — ${(it.amount_total/100).toFixed(2)} ${session.currency.toUpperCase()}</li>`).join("")}
-        </ul>
-        <p>Stripe Session: ${session.id}</p>
-      `;
+      const items = (lineItems?.data || []).map((li) => ({
+        name: li.description,
+        qty: li.quantity,
+        amount:
+          typeof li.amount_total === 'number'
+            ? li.amount_total / 100
+            : (li.price?.unit_amount || 0) / 100,
+      }));
 
-      await resend.emails.send({
-        from: "Reppify <shop@reppify.ch>",
-        to: "shop@reppify.ch",
-        subject: `Neue Bestellung – ${session.id}`,
-        html
+      const order = {
+        id: session.id,
+        total: (session.amount_total || 0) / 100,
+        currency: (session.currency || 'chf').toUpperCase(),
+        email: session.customer_details?.email || '',
+        name: session.customer_details?.name || session.shipping_details?.name || '',
+        address: session.shipping_details?.address || null,
+        items,
+      };
+
+      // ←— HIER werden beide Mails verschickt (Kunde + Shop)
+      await sendOrderEmails({
+        toCustomer: order.email,                   // Kunde
+        storeEmail: process.env.STORE_EMAIL,       // z.B. shop@reppify.ch
+        fromEmail: process.env.FROM_EMAIL,         // verifizierte Absenderadresse (Resend)
+        order,
       });
     }
-    return new Response("ok", { status: 200 });
+
+    return NextResponse.json({ received: true }, { status: 200 });
   } catch (err) {
-    console.error("Webhook handler error:", err);
-    return new Response("Webhook error", { status: 500 });
+    console.error('Webhook handler failed:', err);
+    return new Response('Webhook handler failed', { status: 500 });
   }
 }
