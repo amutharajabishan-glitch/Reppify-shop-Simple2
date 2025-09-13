@@ -1,4 +1,7 @@
 import Stripe from "stripe";
+// 🔽 NEU: für serverseitiges Preis-Lookup
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +19,27 @@ if (stripeSecret.startsWith("pk_")) {
 }
 
 const stripe = new Stripe(stripeSecret, { apiVersion: "2024-06-20" });
+
+/* =========================
+   NEU: Preise aus JSON laden
+   ========================= */
+const overridesPath = path.join(process.cwd(), "public", "price-overrides-v2.json");
+let priceOverrides = {};
+try {
+  priceOverrides = JSON.parse(fs.readFileSync(overridesPath, "utf8"));
+} catch (e) {
+  console.error("Konnte price-overrides-v2.json nicht laden:", e);
+}
+
+// Preis via image-Pfad ermitteln (Schlüssel wie in deiner JSON)
+function getServerPriceCHF(item) {
+  const img = item?.image || "";
+  if (!img) return null;
+  // sicherstellen, dass Schlüssel mit "/" beginnt
+  const key = img.startsWith("/") ? img : `/${img}`;
+  const val = priceOverrides[key];
+  return typeof val === "number" ? val : null;
+}
 
 export async function POST(req) {
   try {
@@ -36,9 +60,23 @@ export async function POST(req) {
       });
     }
 
+    // 🔽 NEU: subtotal mit Server-Preisen berechnen
+    const subtotalCents = cart.reduce((sum, it) => {
+      const qty = Number(it?.qty) > 0 ? Number(it.qty) : 1;
+      const serverPrice = getServerPriceCHF(it);
+      const priceCHF = serverPrice ?? Number(it?.price) || 0;
+      return sum + Math.round(priceCHF * 100) * qty;
+    }, 0);
+
     const line_items = cart.map((item) => {
       const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
-      const unitAmount = Math.round(Number(item?.price) * 200);
+
+      // 🔽 NEU: Preis nur vom Server (Fallback: Clientpreis)
+      const serverPrice = getServerPriceCHF(item);
+      const priceCHF = serverPrice ?? Number(item?.price) || 0;
+
+      // ✅ Bugfix: korrekt *100 (nicht *200)
+      const unitAmount = Math.round(priceCHF * 100);
 
       let imageUrl;
       if (item?.image) {
@@ -60,12 +98,6 @@ export async function POST(req) {
         },
       };
     });
-
-    const subtotalCents = cart.reduce((sum, it) => {
-      const qty = Number(it?.qty) > 0 ? Number(it.qty) : 1;
-      const priceCents = Math.round(Number(it?.price) * 100);
-      return sum + priceCents * qty;
-    }, 0);
 
     const shipping_options =
       subtotalCents >= 20000
@@ -100,7 +132,7 @@ export async function POST(req) {
                 type: "fixed_amount",
                 fixed_amount: { currency: "chf", amount: 2000 },
                 delivery_estimate: {
-                  minimum: { unit: "business_day", value: 6},
+                  minimum: { unit: "business_day", value: 6 },
                   maximum: { unit: "business_day", value: 12 },
                 },
               },
@@ -109,9 +141,6 @@ export async function POST(req) {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      // optional: wenn du explizit festlegen willst:
-      // payment_method_types: ["card"],
-
       customer_email: email,
       billing_address_collection: "required",
       shipping_address_collection: {
