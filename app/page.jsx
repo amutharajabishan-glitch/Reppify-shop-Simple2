@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 /* ==============================
    Einstellungen
    ============================== */
-const MIN_ORDER_CHF = 40;       // Mindestbestellwert
-const FREE_SHIP_FROM_CHF = 100; // Gratis-Versand ab
+const MIN_ORDER_CHF = 30;              // Mindestbestellwert (vorher 40)
+const FREE_SHIP_FROM_CHF = Infinity;   // Gratis-Versand deaktiviert
 
 const FALLBACK_PRICE = {
   shoes: 189,
@@ -64,7 +64,7 @@ function inferSizes(category, title = '') {
   const t = (title || '').toLowerCase();
 
   if (category === 'shoes') {
-    // korrigiert: jede Größe als eigener Wert
+    // jede Größe als eigener Wert
     return ['38', '39', '40', '41', '42', '43', '44', '45', '46'];
   }
   if (['hoodies', 'tees', 'sweatpants-jeans'].includes(category)) {
@@ -209,7 +209,6 @@ export default function Home() {
   /* Cart-Berechnungen */
   const subtotal = cart.reduce((sum, it) => sum + it.price * it.qty, 0);
   const meetsMin = subtotal >= MIN_ORDER_CHF;
-  const freeShip = subtotal >= FREE_SHIP_FROM_CHF;
 
   /* Aktionen */
   function addToCart(p, idx) {
@@ -439,15 +438,7 @@ export default function Home() {
             </div>
           )}
 
-          {freeShip ? (
-            <div style={{ marginBottom:8, color:'#7cfdaa' }}>
-              🎉 Gratis Versand erreicht (ab CHF {FREE_SHIP_FROM_CHF.toFixed(2)})
-            </div>
-          ) : (
-            <div style={{ marginBottom:8, opacity:.8 }}>
-              Gratis Versand ab CHF {FREE_SHIP_FROM_CHF.toFixed(2)} – es fehlen CHF {(FREE_SHIP_FROM_CHF - subtotal).toFixed(2)}
-            </div>
-          )}
+          {/* Gratis-Versand-Hinweis entfernt */}
 
           <button
             className="btn"
