@@ -89,8 +89,8 @@ export async function POST(req) {
                 type: "fixed_amount",
                 fixed_amount: { currency: "chf", amount: 700 },
                 delivery_estimate: {
-                  minimum: { unit: "business_day", value: 2 },
-                  maximum: { unit: "business_day", value: 5 },
+                  minimum: { unit: "business_day", value: 10 },
+                  maximum: { unit: "business_day", value: 12 },
                 },
               },
             },
