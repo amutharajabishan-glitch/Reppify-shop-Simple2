@@ -2,8 +2,8 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 
 // === Shop-Regeln ===
-export const MIN_ORDER_CHF = 40;        // <- Mindestbestellwert (änderbar)
-export const FREE_SHIP_FROM_CHF = 100;  // <- Gratis Versand ab CHF 100
+export const MIN_ORDER_CHF = 75;        // <- Mindestbestellwert (änderbar)
+export const FREE_SHIP_FROM_CHF = 200;  // <- Gratis Versand ab CHF 200
 export const SHIPPING_CHF = 7;          // <- Standard Versandkosten
 
 const CartContext = createContext();
