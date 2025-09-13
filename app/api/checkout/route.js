@@ -64,7 +64,7 @@ export async function POST(req) {
     const subtotalCents = cart.reduce((sum, it) => {
       const qty = Number(it?.qty) > 0 ? Number(it.qty) : 1;
       const serverPrice = getServerPriceCHF(it);
-      const priceCHF = serverPrice ?? (Number(it?.price) || 0);   // ← Klammern
+      const priceCHF = serverPrice ?? (Number(item?.price) || 0);
       return sum + Math.round(priceCHF * 100) * qty;
     }, 0);
 
@@ -73,7 +73,8 @@ export async function POST(req) {
 
       // 🔽 NEU: Preis nur vom Server (Fallback: Clientpreis)
       const serverPrice = getServerPriceCHF(item);
-      const priceCHF = serverPrice ?? (Number(item?.price) || 0); // ← Klammern
+      const priceCHF = serverPrice ?? (Number(item?.price) || 0);
+
 
       // ✅ korrekt *100
       const unitAmount = Math.round(priceCHF * 100);
@@ -99,45 +100,32 @@ export async function POST(req) {
       };
     });
 
-    const shipping_options =
-      subtotalCents >= 20000
-        ? [
-            {
-              shipping_rate_data: {
-                display_name: "Gratis Versand",
-                type: "fixed_amount",
-                fixed_amount: { currency: "chf", amount: 0 },
-                delivery_estimate: {
-                  minimum: { unit: "business_day", value: 10 },
-                  maximum: { unit: "business_day", value: 17 },
-                },
-              },
-            },
-          ]
-        : [
-            {
-              shipping_rate_data: {
-                display_name: "Standard (B-Post)",
-                type: "fixed_amount",
-                fixed_amount: { currency: "chf", amount: 700 },
-                delivery_estimate: {
-                  minimum: { unit: "business_day", value: 10 },
-                  maximum: { unit: "business_day", value: 17 },
-                },
-              },
-            },
-            {
-              shipping_rate_data: {
-                display_name: "Priority (A-Post)",
-                type: "fixed_amount",
-                fixed_amount: { currency: "chf", amount: 2000 },
-                delivery_estimate: {
-                  minimum: { unit: "business_day", value: 6 },
-                  maximum: { unit: "business_day", value: 12 },
-                },
-              },
-            },
-          ];
+    // 🔁 NUR ÄNDERUNG HIER:
+    // Gratis-Versand entfernt – immer kostenpflichtige Optionen anbieten
+    const shipping_options = [
+      {
+        shipping_rate_data: {
+          display_name: "Standard (B-Post)",
+          type: "fixed_amount",
+          fixed_amount: { currency: "chf", amount: 700 },
+          delivery_estimate: {
+            minimum: { unit: "business_day", value: 10 },
+            maximum: { unit: "business_day", value: 17 },
+          },
+        },
+      },
+      {
+        shipping_rate_data: {
+          display_name: "Priority (A-Post)",
+          type: "fixed_amount",
+          fixed_amount: { currency: "chf", amount: 2000 },
+          delivery_estimate: {
+            minimum: { unit: "business_day", value: 6 },
+            maximum: { unit: "business_day", value: 12 },
+          },
+        },
+      },
+    ];
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
