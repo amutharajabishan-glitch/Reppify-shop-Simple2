@@ -94,12 +94,14 @@ export async function POST(req) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: email,
-      // ✅ Rechnungs- und Lieferadresse erheben, aber KEINE Versand-Optionen (A-/B-Post entfernt)
+
+      // ✅ Adressen einsammeln, aber KEINE Versandoptionen (A-/B-Post entfernt)
       billing_address_collection: "required",
       shipping_address_collection: {
         allowed_countries: ["CH", "DE", "AT", "FR", "IT", "LI"],
       },
-      // shipping_options:  <<– bewusst entfernt
+      // keine shipping_options hier!
+
       phone_number_collection: { enabled: true },
       line_items,
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
