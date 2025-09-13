@@ -28,8 +28,8 @@ try {
 }
 
 /* Preis per image-Pfad lookup */
-function getServerPriceCHF(item) {
-  const img = item?.image || "";
+function getServerPriceCHF(it) {
+  const img = it?.image || "";
   if (!img) return null;
   const key = img.startsWith("/") ? img : `/${img}`;
   const val = priceOverrides[key];
@@ -55,7 +55,7 @@ export async function POST(req) {
       });
     }
 
-    // ✅ subtotal mit Server-Preisen berechnen (BUGFIX: it, nicht item)
+    // Subtotal korrekt berechnen (WICHTIG: 'it' benutzen, nicht 'item')
     const subtotalCents = cart.reduce((sum, it) => {
       const qty = Number(it?.qty) > 0 ? Number(it.qty) : 1;
       const serverPrice = getServerPriceCHF(it);
@@ -63,28 +63,27 @@ export async function POST(req) {
       return sum + Math.round(priceCHF * 100) * qty;
     }, 0);
 
-    const line_items = cart.map((item) => {
-      const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
-
-      const serverPrice = getServerPriceCHF(item);
-      const priceCHF = serverPrice ?? (Number(item?.price) || 0);
+    const line_items = cart.map((it) => {
+      const qty = Number(it?.qty) > 0 ? Number(it.qty) : 1;
+      const serverPrice = getServerPriceCHF(it);
+      const priceCHF = serverPrice ?? (Number(it?.price) || 0);
       const unitAmount = Math.round(priceCHF * 100);
 
       let imageUrl;
-      if (item?.image) {
-        const tentative = item.image.startsWith("http")
-          ? item.image
-          : `${origin}${item.image.startsWith("/") ? "" : "/"}${item.image}`;
+      if (it?.image) {
+        const tentative = it.image.startsWith("http")
+          ? it.image
+          : `${origin}${it.image.startsWith("/") ? "" : "/"}${it.image}`;
         if (/^https?:\/\//i.test(tentative)) imageUrl = tentative;
       }
 
       return {
         quantity: qty,
-        price_data: {
+      price_data: {
           currency: "chf",
           unit_amount: unitAmount,
           product_data: {
-            name: item?.title || "Artikel",
+            name: it?.title || "Artikel",
             ...(imageUrl ? { images: [imageUrl] } : {}),
           },
         },
@@ -95,12 +94,13 @@ export async function POST(req) {
       mode: "payment",
       customer_email: email,
 
-      // ✅ Adressen einsammeln, aber KEINE Versandoptionen (A-/B-Post entfernt)
+      // Adresse erfassen JA …
       billing_address_collection: "required",
       shipping_address_collection: {
         allowed_countries: ["CH", "DE", "AT", "FR", "IT", "LI"],
       },
-      // keine shipping_options hier!
+      // … aber KEINE Versand-Optionen (A-/B-Post entfernt)
+      // shipping_options:  (absichtlich weggelassen)
 
       phone_number_collection: { enabled: true },
       line_items,
