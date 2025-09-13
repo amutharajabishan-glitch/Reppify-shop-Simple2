@@ -64,7 +64,7 @@ export async function POST(req) {
     const subtotalCents = cart.reduce((sum, it) => {
       const qty = Number(it?.qty) > 0 ? Number(it.qty) : 1;
       const serverPrice = getServerPriceCHF(it);
-      const priceCHF = serverPrice ?? Number(it?.price) || 0;
+      const priceCHF = serverPrice ?? (Number(it?.price) || 0);   // ← Klammern
       return sum + Math.round(priceCHF * 100) * qty;
     }, 0);
 
@@ -73,9 +73,9 @@ export async function POST(req) {
 
       // 🔽 NEU: Preis nur vom Server (Fallback: Clientpreis)
       const serverPrice = getServerPriceCHF(item);
-      const priceCHF = serverPrice ?? Number(item?.price) || 0;
+      const priceCHF = serverPrice ?? (Number(item?.price) || 0); // ← Klammern
 
-      // ✅ Bugfix: korrekt *100 (nicht *200)
+      // ✅ korrekt *100
       const unitAmount = Math.round(priceCHF * 100);
 
       let imageUrl;
