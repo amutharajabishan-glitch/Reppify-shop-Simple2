@@ -38,7 +38,7 @@ export async function POST(req) {
 
     const line_items = cart.map((item) => {
       const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
-      const unitAmount = Math.round(Number(item?.price) * 100);
+      const unitAmount = Math.round(Number(item?.price) * 200);
 
       let imageUrl;
       if (item?.image) {
@@ -77,7 +77,7 @@ export async function POST(req) {
                 fixed_amount: { currency: "chf", amount: 0 },
                 delivery_estimate: {
                   minimum: { unit: "business_day", value: 10 },
-                  maximum: { unit: "business_day", value: 12 },
+                  maximum: { unit: "business_day", value: 17 },
                 },
               },
             },
@@ -90,7 +90,7 @@ export async function POST(req) {
                 fixed_amount: { currency: "chf", amount: 700 },
                 delivery_estimate: {
                   minimum: { unit: "business_day", value: 10 },
-                  maximum: { unit: "business_day", value: 12 },
+                  maximum: { unit: "business_day", value: 17 },
                 },
               },
             },
@@ -100,8 +100,8 @@ export async function POST(req) {
                 type: "fixed_amount",
                 fixed_amount: { currency: "chf", amount: 2000 },
                 delivery_estimate: {
-                  minimum: { unit: "business_day", value: 5},
-                  maximum: { unit: "business_day", value: 10 },
+                  minimum: { unit: "business_day", value: 6},
+                  maximum: { unit: "business_day", value: 12 },
                 },
               },
             },
