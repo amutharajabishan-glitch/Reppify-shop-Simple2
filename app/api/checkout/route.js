@@ -1,3 +1,4 @@
+// /app/api/checkout/route.js
 import Stripe from "stripe";
 import fs from "fs";
 import path from "path";
@@ -55,7 +56,7 @@ export async function POST(req) {
       });
     }
 
-    // Subtotal korrekt berechnen (WICHTIG: 'it' benutzen, nicht 'item')
+    // Subtotal berechnen
     const subtotalCents = cart.reduce((sum, it) => {
       const qty = Number(it?.qty) > 0 ? Number(it.qty) : 1;
       const serverPrice = getServerPriceCHF(it);
@@ -63,6 +64,7 @@ export async function POST(req) {
       return sum + Math.round(priceCHF * 100) * qty;
     }, 0);
 
+    // Stripe Line Items vorbereiten
     const line_items = cart.map((it) => {
       const qty = Number(it?.qty) > 0 ? Number(it.qty) : 1;
       const serverPrice = getServerPriceCHF(it);
@@ -79,31 +81,43 @@ export async function POST(req) {
 
       return {
         quantity: qty,
-      price_data: {
+        price_data: {
           currency: "chf",
           unit_amount: unitAmount,
           product_data: {
-            name: it?.title || "Artikel",
+            name: `${it?.title || "Artikel"} (Größe: ${it?.size || "One Size"})`, // 👈 Größe im Produktnamen
             ...(imageUrl ? { images: [imageUrl] } : {}),
           },
         },
       };
     });
 
+    // Stripe Checkout Session erstellen
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: email,
 
-      // Adresse erfassen JA …
+      // ✅ Adresse erfassen, aber keine Versandoptionen
       billing_address_collection: "required",
       shipping_address_collection: {
         allowed_countries: ["CH", "DE", "AT", "FR", "IT", "LI"],
       },
-      // … aber KEINE Versand-Optionen (A-/B-Post entfernt)
-      // shipping_options:  (absichtlich weggelassen)
 
       phone_number_collection: { enabled: true },
       line_items,
+
+      // 👇 Extra: gesamte Bestellung inkl. Größe ins Metadata packen
+      metadata: {
+        order_items: JSON.stringify(
+          cart.map((it) => ({
+            title: it.title,
+            size: it.size,
+            qty: it.qty,
+            price: it.price,
+          }))
+        ),
+      },
+
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout?canceled=1`,
     });
