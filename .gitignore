@@ -1,18 +1,3 @@
-# Dependencies & Builds
 node_modules/
 .next/
-dist/
-build/
-out/
-
-# Vercel/Netlify/Tools
-.vercel/
-.clerk/
-.npm/
-npm-debug.log*
-
-# Env & System
-.env
-.env.local
 .DS_Store
-.vercel

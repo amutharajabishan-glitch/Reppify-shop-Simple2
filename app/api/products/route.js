@@ -14,59 +14,75 @@ function isIgnored(name) {
 }
 
 function folderToCategory(folderName) {
-  // Unsere Kategorien-Schlüssel
-  const m = {
-    shoes: 'shoes',
-    caps: 'caps',
-    hoodies: 'hoodies',
-    tees: 'tees',
-    pants: 'sweatpants-jeans',
-    'sweatpants-jeans': 'sweatpants-jeans',
-    bags: 'bags',
-    accessories: 'accessories',
-    parfum: 'parfum',
-  };
-  return m[folderName] || folderName;
+  const f = String(folderName).toLowerCase();
+  switch (f) {
+    case 'shoes': return 'Shoes';
+    case 'slides': return 'Slides';
+    case 'hoodies': 
+    case 'hoodies & zippers':
+    case 'hoodies-zippers':
+    case 'hoodies_zippers':
+      return 'Hoodies & Zippers';
+    case 'tees': return 'Tees';
+    case 'pants':
+    case 'sweatpants':
+    case 'sweatpants & jeans':
+    case 'sweatpants-jeans':
+    case 'sweatpants_jeans':
+    case 'jeans':
+      return 'Sweatpants & Jeans';
+    case 'caps':
+    case 'beanies':
+    case 'caps & beanies':
+    case 'caps-beanies':
+    case 'caps_beanies':
+      return 'Caps & Beanies';
+    case 'bags':
+    case 'wallets':
+    case 'bags & wallets':
+    case 'bags-wallets':
+    case 'bags_wallets':
+      return 'Bags & Wallets';
+    case 'accessories': return 'Accessories';
+    case 'parfum': return 'Parfum';
+    case 'jackets': return 'Jackets';
+    case 'pullover': return 'Pullover';
+    default:
+      // Fallback: Capitalize first letter
+      return f.charAt(0).toUpperCase() + f.slice(1);
+  }
+}
+
+function titleFromFilename(file) {
+  const base = path.basename(file).replace(/\.[^/.]+$/, '');
+  return base
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 export async function GET() {
   const items = [];
-
   if (!fs.existsSync(PUBLIC_DIR)) {
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ items });
   }
 
-  const categories = fs.readdirSync(PUBLIC_DIR, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name);
+  const cats = fs.readdirSync(PUBLIC_DIR).filter(d => !isIgnored(d) && fs.statSync(path.join(PUBLIC_DIR, d)).isDirectory());
+  for (const cat of cats) {
+    const folder = path.join(PUBLIC_DIR, cat);
+    const files = fs.readdirSync(folder).filter(f => !isIgnored(f) && VALID_EXT.test(f));
 
-  for (const cat of categories) {
-    const catDir = path.join(PUBLIC_DIR, cat);
-    const files = fs.readdirSync(catDir, { withFileTypes: true });
-
-    for (const f of files) {
-      const fullname = path.join(catDir, f.name);
-      const base = f.name;
-
-      if (isIgnored(base)) continue;
-      if (!f.isFile() || !VALID_EXT.test(base)) continue;
-
-      // saubere Titel aus Dateinamen
-      const title = base
-        .replace(/\.[a-z0-9]+$/i, '')
-        .replace(/[-_]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
+    for (const base of files) {
+      const title = titleFromFilename(base);
       items.push({
         title,
         image: `/images/${cat}/${encodeURIComponent(base)}`,
         category: folderToCategory(cat),
-        price: 0, // optional
-        sizes: [], // optional
+        price: 0,      // optional: you can set defaults here or enrich elsewhere
+        sizes: [],     // optional
       });
     }
   }
-
   return NextResponse.json({ items });
 }
