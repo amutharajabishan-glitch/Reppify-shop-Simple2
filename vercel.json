@@ -1,7 +1,10 @@
 {
   "version": 2,
   "builds": [
-    { "src": "next.config.js", "use": "@vercel/next" }
+    {
+      "src": "next.config.js",
+      "use": "@vercel/next"
+    }
   ],
   "functions": {
     "app/api/products/route.js": {
@@ -9,6 +12,9 @@
     }
   },
   "routes": [
-    { "src": "/(.*)", "dest": "/" }
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
   ]
 }
