@@ -1,14 +1,9 @@
 {
   "version": 2,
-  "functions": {
-    "app/api/products/route.js": {
-      "includeFiles": "public/images/**"
-    }
-  },
+  "builds": [
+    { "src": "next.config.js", "use": "@vercel/next" }
+  ],
   "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
+    { "src": "/(.*)", "dest": "/" }
   ]
 }
