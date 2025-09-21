@@ -1,9 +1,5 @@
-node_modules/
-.next/
+node_modules
+.next
+.env
+.env.*
 .DS_Store
-.vercel
-
-# Ignore environment files
-.env.local
-.env*
-
